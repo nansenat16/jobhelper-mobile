@@ -40,7 +40,25 @@
 	</div>
 	
 </div>
+
 <script type="text/javascript">
+// 顯示訊息框
+// https://gist.github.com/kamranzafar/3136584
+var create_msg=function(msg){
+	$("<div class='ui-loader ui-overlay-shadow ui-body-e ui-corner-all'><h3>"+msg+"</h3></div>")
+	.css({ display: "block", 
+		opacity: 0.90, 
+		position: "fixed",
+		padding: "7px",
+		"text-align": "center",
+		width: "270px",
+		left: ($(window).width() - 284)/2,
+		top: $(window).height()/2 -60 })
+	.appendTo( $.mobile.pageContainer ).delay( 3500 )
+	.fadeOut( 400, function(){
+		$(this).remove();
+	});
+};
 
 //建立設定頁面的資料包列表
 var pkg_notice={};
@@ -76,12 +94,20 @@ var create_pkg_list=function(list){
 
 //載入資料包
 var load_pkg_list=function(){
+	$.mobile.loading( 'show', {text: "載入資料包列表...請稍候",textVisible: true,theme: 'a'});
+	$(this).attr('disabled','');
 	$.ajax({
 		type:'GET',
 		url:'http://jobhelper.g0v.ronny.tw/api/getpackages',
 		dataType:'JSONP',
+		timeout:5000,
 		success:function(data){
 			create_pkg_list(data);
+			rm_search_lock();
+		},
+		error:function(){
+			rm_search_lock();
+			create_msg('無法取得資料包列表，請檢查您的網路連線或稍候再試。');
 		}
 	});
 };
@@ -128,6 +154,11 @@ var show_data=function(data){
 	}
 }
 
+var rm_search_lock=function(){
+	$.mobile.loading('hide');
+	$('#search_btn').removeAttr('disabled');
+}
+
 $(document).ready(function(){
 	load_pkg_list();
 
@@ -145,23 +176,36 @@ $(document).ready(function(){
 
 	 //搜尋
 	$('#search_btn').click(function(){
-		$.mobile.loading( 'show', {text: "搜尋中...",textVisible: true,theme: 'a'});
-		$(this).attr('disabled','');
 		var pkg_list=get_pkg_list();
 		var comp_name=$('#comp_name').val();
-		//alert(comp_name);
+		if(comp_name.length<3){
+			create_msg('最少要輸入三個字');
+			return;
+		}
+
+		if(pkg_list==''){
+			load_pkg_list();
+			return;
+		}
+
+		$.mobile.loading( 'show', {text: "搜尋中...",textVisible: true,theme: 'a'});
+		$(this).attr('disabled','');
+
 		$.ajax({
 			type:'GET',
 			url:'http://jobhelper.g0v.ronny.tw/api/search?name='+comp_name+'&packages='+pkg_list,
 			dataType:'JSONP',
+			timeout:5000,
 			success:function(data){
 				show_data(data);
+				rm_search_lock();
+			},
+			error:function(xhr, ajaxOptions, thrownError){
+				create_msg('搜尋失敗，請檢查您的網路連線或稍候再試。');
+				rm_search_lock();
 			}
 		});
-		$.mobile.loading('hide');
-		$(this).removeAttr('disabled')
 	});
-
 });
 </script>
 </body>
